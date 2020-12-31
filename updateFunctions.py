@@ -1,3 +1,41 @@
+import json
+import requests
+from bs4 import BeautifulSoup
+import re
+import csv
+import os
+import gzip
+import shutil
+import sqlite3
+import sys
+import math
+import time
+import pandas as pd
+import numpy as np
+
+categories = {
+    "Action & Adventure": 1365,
+    "Anime": 7424,
+    "Children & Family Movies": 783,
+    "Classic Movies": 31574,
+    "Comedies": 6548,
+    "Cult Movies": 7627,
+    "Documentaries": 6839,
+    "Dramas": 5763,
+    "Faith & Spirituality": 26835,
+    "Foreign Movies": 7462,
+    "Gay & Lesbian Movies": 5977,
+    "Horror Movies": 8711,
+    "Independent Movies": 7077,
+    "Music": 1701,
+    "Musicals": 13335,
+    "Romantic Movies": 8883,
+    "Sci-Fi & Fantasy": 1492,
+    "Sports Movies": 4370,
+    "Thrillers": 8933,
+    "TV Shows": 83
+}
+
 def download(url):
     
     # download file from URL and write to new .tsv file
@@ -52,7 +90,7 @@ def updateIMDBdatasets():
 def updateMovies_id():
     
     # connect with database
-    con = sqlite3.connect('Database/netimdb.db')
+    con = sqlite3.connect('db/netimdb.db')
     cur = con.cursor()
     
     with open("titlebasics.tsv") as file:
@@ -71,7 +109,7 @@ def updateMovies_id():
 def updateRatings():
     
     # connect with database
-    con = sqlite3.connect('Database/netimdb.db')
+    con = sqlite3.connect('db/netimdb.db')
     cur = con.cursor()
     
     with open("titleratings.tsv") as file:
@@ -126,7 +164,7 @@ def getNetflixYear(code):
 def updateNetflix():
     
     # connect with database
-    con = sqlite3.connect('Database/netimdb.db')
+    con = sqlite3.connect('db/netimdb.db')
     cur = con.cursor()
     
     # for each category code, scrape titles 
@@ -142,11 +180,11 @@ def updateNetflix():
 
 def updateNetflixYears():
     
-    con = sqlite3.connect('Database/netimdb.db')
+    con = sqlite3.connect('db/netimdb.db')
     cur = con.cursor()
 
     # Query netflix ids that don't have a year yet
-    netflixIdQuery = cur.execute("SELECT id FROM netflix EXCEPT SELECT id FROM netflixYear;").fetchall()
+    netflixIdQuery = cur.execute("SELECT id FROM netflix EXCEPT SELECT id FROM netflixYear WHERE year IS NOT 'NULL';").fetchall()
     
     # If all ids have a year, we're done
     if netflixIdQuery == None:
@@ -159,8 +197,12 @@ def updateNetflixYears():
     for Id in netflixId:
         try:
             data.append(int(getNetflixYear(Id)[0]))
+            print('added a netflix year')
         except:
             data.append("NULL")
+            print('added NULL')
+        # pause for a second, otherwise Netflix will kick us out
+        time.sleep(1)
     
     zippedData = list(zip(netflixId, data))
 
@@ -198,7 +240,7 @@ def updateOwnRatings():
 
     flat_list = [item for sublist in idList for item in sublist]
     
-    con = sqlite3.connect('Database/netimdb.db')
+    con = sqlite3.connect('db/netimdb.db')
     cur = con.cursor()
 
     cur.executemany("REPLACE INTO watched (id) VALUES (?);", list(zip(flat_list)))
